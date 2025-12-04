@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>abbas clock</title>
+    <link rel="shortcut icon" href="luak.jpg" type="image/x-icon">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Micro+5&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Micro 5", sans-serif;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        color: #fff;
+        overflow: hidden;
+        position: relative;
+        user-select: none;
+      }
+      body::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          ellipse at 50% 50%,
+          rgba(255, 255, 255, 0.02) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+      .clock {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        font-size: clamp(100px, 20vmin, 300px);
+        font-weight: 400;
+        letter-spacing: -10px;
+        text-align: center;
+        line-height: 1;
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+        position: relative;
+      }
+      .clock::after {
+        content: "";
+        position: absolute;
+        bottom: -0.08em;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 95%;
+        height: 0.04em;
+        background: #000;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+      }
+      .digit {
+        display: inline-block;
+        width: 0.35em;
+        text-align: center;
+        transition: all 0.3s ease-in-out;
+        will-change: transform, opacity;
+      }
+      .animate {
+        animation: simpleFadeSlide 0.4s ease-out;
+      }
+      @keyframes simpleFadeSlide {
+        0% {
+          transform: translateY(30px);
+          opacity: 0;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .separator {
+        display: inline-block;
+        margin: 0;
+        font-size: inherit;
+        font-weight: inherit;
+        color: #fff;
+        line-height: 1;
+        text-shadow: inherit;
+        width: 0.3em;
+        text-align: center;
+      }
+      #controls {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 10;
+      }
+      #muteBtn{
+        font-size: 16px;
+        cursor: pointer;
+        transition: opacity 0.3s ease;
+        background: #ff000000;
+        border: none;
+        border-radius: 50px;
+        opacity: 10%;
+        outline: none;
+      }
+      #muteBtn:hover{
+        background: rgba(255, 255, 255, 0.2);
+        opacity: 30%;
+      }
+      @media (max-width: 600px) and (orientation: portrait) {
+        html {
+          overflow: hidden;
+        }
+        body {
+          position: fixed;
+          top: calc(23vh - 50vw);
+          left: calc(50vw - 50vh);
+          width: 100vh;
+          height: 100vw;
+          transform: rotate(90deg);
+          transform-origin: 50% 50%;
+          overflow: hidden;
+        }
+        .clock {
+          width: 100%;
+          height: 100%;
+          font-size: clamp(230px, 20vh, 500px);
+        }
+        #controls {
+          bottom: 10px;
+          right: 10px;
+          position: absolute;
+        }
+      }
+      @media (orientation: landscape) {
+        .clock {
+          font-size: clamp(550px, 25vmin, 350px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="clock">
+      <span class="digit" id="h1">0</span><span class="digit" id="h2">0</span
+      ><span class="separator">:</span><span class="digit" id="m1">0</span
+      ><span class="digit" id="m2">0</span><span class="separator">:</span
+      ><span class="digit" id="s1">0</span><span class="digit" id="s2">0</span>
+    </div>
+    <div id="controls">
+      <button id="muteBtn">🔊</button>
+    </div>
+    <script>
+      const digits = {
+        h1: document.getElementById("h1"),
+        h2: document.getElementById("h2"),
+        m1: document.getElementById("m1"),
+        m2: document.getElementById("m2"),
+        s1: document.getElementById("s1"),
+        s2: document.getElementById("s2"),
+      };
+      let prevTime = { h1: "0", h2: "0", m1: "0", m2: "0", s1: "0", s2: "0" };
+      let audioCtx = null;
+      let muted = false;
+
+      function initAudio() {
+        if (audioCtx && audioCtx.state !== 'suspended') return;
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        audioCtx.resume();
+      }
+
+      ['click', 'touchstart'].forEach(event => {
+        document.body.addEventListener(event, initAudio, { once: true });
+      });
+
+      function playSecondSound() {
+        if (muted || !audioCtx || audioCtx.state === 'suspended') return;
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.frequency.value = 600;
+        oscillator.type = "sine";
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.01,
+          audioCtx.currentTime + 0.05
+        );
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.05);
+      }
+
+      function playMinuteSound() {
+        if (muted || !audioCtx || audioCtx.state === 'suspended') return;
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.frequency.value = 800;
+        oscillator.type = "sine";
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.01,
+          audioCtx.currentTime + 0.1
+        );
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.1);
+      }
+
+      function playHourSound() {
+        if (muted || !audioCtx || audioCtx.state === 'suspended') return;
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.frequency.value = 1000;
+        oscillator.type = "sine";
+        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.01,
+          audioCtx.currentTime + 0.15
+        );
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.15);
+      }
+
+      function updateClock() {
+        const now = new Date();
+        let hours = now.getHours() % 12;
+        if (hours === 0) hours = 12;
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+        const hStr = hours.toString().padStart(2, '0');
+        const mStr = minutes.toString().padStart(2, '0');
+        const sStr = seconds.toString().padStart(2, '0');
+        const h1 = hStr[0],
+          h2 = hStr[1],
+          m1 = mStr[0],
+          m2 = mStr[1],
+          s1 = sStr[0],
+          s2 = sStr[1];
+        const secondChanged = s1 !== prevTime.s1 || s2 !== prevTime.s2;
+        const minuteChanged = m1 !== prevTime.m1 || m2 !== prevTime.m2;
+        const hourChanged = h1 !== prevTime.h1 || h2 !== prevTime.h2;
+        if (h1 !== prevTime.h1) animateDigit(digits.h1, h1);
+        if (h2 !== prevTime.h2) animateDigit(digits.h2, h2);
+        if (m1 !== prevTime.m1) animateDigit(digits.m1, m1);
+        if (m2 !== prevTime.m2) animateDigit(digits.m2, m2);
+        if (s1 !== prevTime.s1) animateDigit(digits.s1, s1);
+        if (s2 !== prevTime.s2) animateDigit(digits.s2, s2);
+        if (secondChanged) playSecondSound();
+        if (minuteChanged) playMinuteSound();
+        if (hourChanged) playHourSound();
+        prevTime = { h1, h2, m1, m2, s1, s2 };
+      }
+
+      function animateDigit(digitEl, newValue) {
+        digitEl.classList.add("animate");
+        digitEl.textContent = newValue;
+        setTimeout(() => {
+          digitEl.classList.remove("animate");
+        }, 400);
+      }
+
+      // Double-click to toggle fullscreen
+      document.addEventListener('dblclick', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Error attempting to enable fullscreen: ${err.message}`);
+          });
+        } else {
+          document.exitFullscreen().catch(err => {
+            console.log(`Error attempting to exit fullscreen: ${err.message}`);
+          });
+        }
+      });
+
+      // Handle fullscreen change to hide/show sound button
+      document.addEventListener('fullscreenchange', () => {
+        const muteBtn = document.getElementById('muteBtn');
+        if (document.fullscreenElement) {
+          muteBtn.style.display = 'none';
+        } else {
+          muteBtn.style.display = 'block';
+        }
+      });
+
+      // Mute/unmute button
+      const muteBtn = document.getElementById('muteBtn');
+      muteBtn.addEventListener('click', () => {
+        muted = !muted;
+        muteBtn.textContent = muted ? '🔇' : '🔊';
+      });
+
+      updateClock();
+      setInterval(updateClock, 1000);
+    </script>
+  </body>
+</html>
